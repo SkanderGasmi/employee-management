@@ -1,19 +1,49 @@
-version: '3'
+version: '3.8'
 services:
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    depends_on:
-      - mongo
-  mongo:
-    image: mongo:6
+  mongodb:
+    image: mongo:latest
+    container_name: employee-mongodb
+    restart: always
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
       - mongo-data:/data/db
+
+  backend:
+    build: ./backend
+    container_name: employee-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/employee_management?authSource=admin
+      FRONTEND_PATH: /app/frontend
+    depends_on:
+      - mongodb
+    volumes:
+      - ./backend:/app
+      - ./frontend:/app/frontend
+      - /app/node_modules
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: employee-frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true  # enables hot reload on Windows
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - backend
 
 volumes:
   mongo-data:
